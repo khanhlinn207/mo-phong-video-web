@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="Báo cáo mô phỏng biến động giá")
 
-# Khai báo thư mục static chứa video
+# Gắn thư mục static chứa video
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 def load_market_data():
@@ -90,23 +90,25 @@ HTML_CONTENT = """<!DOCTYPE html>
         h1 {
             color: var(--text-main);
             font-size: 24px;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             text-align: center;
             font-weight: bold;
         }
         .main-container {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 24px;
-            max-width: 1250px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 1100px;
             width: 100%;
-            align-items: start;
         }
+        /* Khung video kéo rộng toàn bộ chiều ngang */
         .video-box {
             background-color: var(--dark-card);
-            padding: 14px;
+            padding: 12px;
             border-radius: 14px;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            width: 100%;
+            box-sizing: border-box;
         }
         video {
             width: 100%;
@@ -114,53 +116,58 @@ HTML_CONTENT = """<!DOCTYPE html>
             border-radius: 8px;
             display: block;
         }
-        .sidebar {
-            display: flex;
-            flex-direction: column;
+        /* Hàng chứa 2 khung bên dưới chia đều 2 cột */
+        .bottom-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 20px;
+            width: 100%;
         }
         .card {
             background-color: var(--white-card);
             border-radius: 14px;
             padding: 18px 20px;
             box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+            box-sizing: border-box;
         }
         .card h2 {
             margin-top: 0;
-            margin-bottom: 14px;
-            font-size: 17px;
+            margin-bottom: 12px;
+            font-size: 16px;
             color: #333;
             border-bottom: 2px solid #fce7f3;
             padding-bottom: 8px;
         }
+        /* Bảng quy ước màu sắc */
         .color-table {
             width: 100%;
             border-collapse: collapse;
         }
         .color-table td {
-            padding: 8px 6px;
-            font-size: 14px;
+            padding: 7px 4px;
+            font-size: 13.5px;
             border-bottom: 1px solid #f1f5f9;
         }
         .color-badge {
             display: inline-block;
-            width: 16px;
-            height: 16px;
+            width: 15px;
+            height: 15px;
             border-radius: 4px;
             vertical-align: middle;
             margin-right: 6px;
         }
+        /* Bảng chỉ số */
         .metric-grid {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
         }
         .metric-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 14px;
-            padding: 6px 0;
+            font-size: 13.5px;
+            padding: 4px 0;
             border-bottom: 1px dashed #e2e8f0;
         }
         .metric-item:last-child {
@@ -172,20 +179,20 @@ HTML_CONTENT = """<!DOCTYPE html>
         .metric-val {
             font-weight: 700;
             color: #111;
-            transition: color 0.1s ease;
         }
         .note {
-            font-size: 13px;
+            font-size: 12px;
             color: #555;
-            margin-top: 12px;
+            margin-top: 10px;
             line-height: 1.4;
             background: #fafafa;
-            padding: 8px 10px;
+            padding: 6px 10px;
             border-radius: 6px;
             border-left: 3px solid #f472b6;
         }
-        @media (max-width: 950px) {
-            .main-container {
+        /* Tự động xếp chồng 1 cột khi mở trên điện thoại */
+        @media (max-width: 768px) {
+            .bottom-cards {
                 grid-template-columns: 1fr;
             }
         }
@@ -195,14 +202,17 @@ HTML_CONTENT = """<!DOCTYPE html>
     <h1>BÁO CÁO MÔ PHỎNG BIẾN ĐỘNG GIÁ CHỨNG KHOÁN</h1>
     
     <div class="main-container">
+        <!-- Khung phát Video lớn ở trên -->
         <div class="video-box">
             <video id="stockVideo" controls autoplay loop muted playsinline>
-                <source src="/static/stock_simulation.mp4" type="video/mp4">
+                <source src="/static/mo_phong.mp4" type="video/mp4">
                 Trình duyệt không hỗ trợ xem video.
             </video>
         </div>
 
-        <div class="sidebar">
+        <!-- 2 Khung thông tin xếp ngang ở dưới -->
+        <div class="bottom-cards">
+            <!-- Khung 1: Quy ước màu sắc -->
             <div class="card">
                 <h2>🎨 Quy ước màu sắc thị trường</h2>
                 <table class="color-table">
@@ -229,6 +239,7 @@ HTML_CONTENT = """<!DOCTYPE html>
                 </table>
             </div>
 
+            <!-- Khung 2: Chỉ số chi tiết nhảy theo video -->
             <div class="card">
                 <h2 id="metricTitle">📊 Chỉ số chi tiết (Phiên Ngày 1/365)</h2>
                 <div class="metric-grid">
@@ -264,6 +275,7 @@ HTML_CONTENT = """<!DOCTYPE html>
         </div>
     </div>
 
+    <!-- Script đồng bộ chỉ số theo tiến độ phát video -->
     <script>
         const video = document.getElementById('stockVideo');
         const marketData = __MARKET_DATA_JSON__;
