@@ -18,7 +18,7 @@ app = FastAPI(title="Báo cáo mô phỏng biến động giá")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ========================================================
-# 1. GIỮ NGUYÊN HOÀN TOÀN HÀM XỬ LÝ DỮ LIỆU CŨ CỦA BẠN
+# 1. HÀM XỬ LÝ DỮ LIỆU ĐỒNG BỘ VIDEO (GIỮ NGUYÊN)
 # ========================================================
 def load_market_data():
     csv_path = "abc-16.csv" if os.path.exists("abc-16.csv") else "data/abc-16.csv"
@@ -71,7 +71,7 @@ def load_market_data():
     return data
 
 # ========================================================
-# 2. HÀM TỰ ĐỘNG VẼ 5 BIỂU ĐỒ (DÙNG ĐÚNG CODE CỦA BẠN)
+# 2. HÀM TỰ ĐỘNG VẼ 5 BIỂU ĐỒ (ĐÃ SỬA LỖI TƯƠNG THÍCH MATPLOTLIB)
 # ========================================================
 def fig_to_base64(fig):
     buf = io.BytesIO()
@@ -107,14 +107,16 @@ def generate_charts():
     ax1.set_ylabel('Giá trung bình (VND)', fontsize=9.5)
     charts['chart1'] = fig_to_base64(fig1)
 
-    # Câu 2: Boxplot theo tháng
+    # Câu 2: Boxplot theo tháng (Đã bỏ labels=... để không còn lỗi)
     fig2, ax2 = plt.subplots(figsize=(7.5, 3.8), facecolor='white')
     ax2.set_facecolor('white')
     data_by_thang = [gia[gia['thang'] == m]['gia'].values for m in range(1, 13)]
-    ax2.boxplot(data_by_thang, labels=range(1, 13), patch_artist=True,
+    ax2.boxplot(data_by_thang, patch_artist=True,
                 boxprops=dict(facecolor='#FFD1DC', edgecolor='#a3224b'),
                 medianprops=dict(color='#a3224b'),
                 flierprops=dict(markeredgecolor='#a3224b', markersize=4))
+    ax2.set_xticks(range(1, 13))
+    ax2.set_xticklabels(range(1, 13))
     ax2.set_xlabel('Tháng', fontsize=9.5)
     ax2.set_ylabel('Giá (VND)', fontsize=9.5)
     ax2.grid(axis='y', linestyle='--', alpha=0.4)
@@ -147,7 +149,7 @@ def generate_charts():
     ax3.grid(axis='y', linestyle='--', alpha=0.4)
     charts['chart3'] = fig_to_base64(fig3)
 
-    # Câu 4: Histogram 2 nửa năm (Code gốc: #e8789a và #6c8ebf)
+    # Câu 4: Histogram 2 nửa năm (#e8789a và #6c8ebf)
     dau = gia[gia['quy'] <= 2]['gia']
     cuoi = gia[gia['quy'] >= 3]['gia']
     fig4, (a, b) = plt.subplots(1, 2, figsize=(8, 3.6), sharey=True, facecolor='white')
@@ -185,7 +187,7 @@ market_data_json = json.dumps(market_data_list)
 auto_charts = generate_charts()
 
 # ========================================================
-# 3. GIAO DIỆN HTML (GIỮ NGUYÊN TOÀN BỘ PHẦN TRÊN, CHỈ THÊM MỤC PHÂN TÍCH Ở DƯỚI)
+# 3. GIAO DIỆN WEB
 # ========================================================
 HTML_CONTENT = f"""<!DOCTYPE html>
 <html lang="vi">
@@ -226,7 +228,6 @@ HTML_CONTENT = f"""<!DOCTYPE html>
             max-width: 1100px;
             width: 100%;
         }}
-        /* Khung video kéo rộng toàn bộ chiều ngang (CŨ) */
         .video-box {{
             background-color: var(--dark-card);
             padding: 12px;
@@ -241,7 +242,6 @@ HTML_CONTENT = f"""<!DOCTYPE html>
             border-radius: 8px;
             display: block;
         }}
-        /* Hàng chứa 2 khung bên dưới (CŨ) */
         .bottom-cards {{
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -314,7 +314,6 @@ HTML_CONTENT = f"""<!DOCTYPE html>
             border-left: 3px solid #f472b6;
         }}
 
-        /* PHẦN MỚI THÊM: DANH SÁCH 5 MỤC PHÂN TÍCH Ở DƯỚI */
         .section-header {{
             text-align: center;
             margin: 15px 0 5px 0;
@@ -390,7 +389,7 @@ HTML_CONTENT = f"""<!DOCTYPE html>
     <h1>BÁO CÁO MÔ PHỎNG BIẾN ĐỘNG GIÁ CHỨNG KHOÁN</h1>
     
     <div class="main-container">
-        <!-- Khung phát Video lớn ở trên (GIỮ NGUYÊN) -->
+        <!-- Khung Video phía trên -->
         <div class="video-box">
             <video id="stockVideo" controls autoplay loop muted playsinline>
                 <source src="/static/mo_phong.mp4" type="video/mp4">
@@ -398,9 +397,8 @@ HTML_CONTENT = f"""<!DOCTYPE html>
             </video>
         </div>
 
-        <!-- 2 Khung thông tin xếp ngang ở dưới (GIỮ NGUYÊN) -->
+        <!-- 2 Khung bảng màu và chỉ số real-time -->
         <div class="bottom-cards">
-            <!-- Khung 1: Quy ước màu sắc -->
             <div class="card">
                 <h2>🎨 Quy ước màu sắc thị trường</h2>
                 <table class="color-table">
@@ -427,7 +425,6 @@ HTML_CONTENT = f"""<!DOCTYPE html>
                 </table>
             </div>
 
-            <!-- Khung 2: Chỉ số chi tiết nhảy theo video -->
             <div class="card">
                 <h2 id="metricTitle">📊 Chỉ số chi tiết (Phiên Ngày 1/365)</h2>
                 <div class="metric-grid">
@@ -462,13 +459,13 @@ HTML_CONTENT = f"""<!DOCTYPE html>
             </div>
         </div>
 
-        <!-- KHU VỰC BỔ SUNG: 5 MỤC PHÂN TÍCH (CHỈ GỒM HÌNH ẢNH & NHẬN XÉT) -->
+        <!-- Khung 5 mục phân tích ở dưới -->
         <div class="section-header">
             <h2>Phân Tích Dữ Liệu Biến Động Giá</h2>
         </div>
 
         <div class="analysis-list">
-            <!-- Mục 1 -->
+            <!-- 1. Giá trung bình mỗi tháng -->
             <div class="item-card">
                 <h3>1. Giá trung bình mỗi tháng</h3>
                 <div class="item-body">
@@ -481,7 +478,7 @@ HTML_CONTENT = f"""<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- Mục 2 -->
+            <!-- 2. Boxplot biến động theo tháng -->
             <div class="item-card">
                 <h3>2. Phân bố giá theo tháng (Boxplot)</h3>
                 <div class="item-body">
@@ -497,7 +494,7 @@ HTML_CONTENT = f"""<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- Mục 3 -->
+            <!-- 3. Phiên bất thường -->
             <div class="item-card">
                 <h3>3. Thống kê số lượng phiên giao dịch bất thường</h3>
                 <div class="item-body">
@@ -505,12 +502,12 @@ HTML_CONTENT = f"""<!DOCTYPE html>
                         <img src="{auto_charts['chart3']}" alt="Các phiên bất thường">
                     </div>
                     <div class="desc-text">
-                        <p><strong>Nhận xét:</strong> Toàn bộ 365 phiên ghi nhận <strong>118 phiên chạm sàn</strong> và <strong>114 phiên kịch trần</strong>[cite: 27]. Các phiên trần xuất hiện dày đặc trong chu kỳ bứt phá đầu năm, trong khi các phiên sàn tập trung ở sườn dốc giảm giá khi cổ phiếu chịu áp lực bán tháo liên tiếp[cite: 27].</p>
+                        <p><strong>Nhận xét:</strong> Toàn bộ 365 phiên ghi nhận <strong>118 phiên chạm sàn</strong> và <strong>114 phiên kịch trần</strong>. Các phiên trần xuất hiện dày đặc trong chu kỳ bứt phá đầu năm, trong khi các phiên sàn tập trung ở sườn dốc giảm giá khi cổ phiếu chịu áp lực bán tháo liên tiếp.</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Mục 4 -->
+            <!-- 4. Histogram 2 nửa năm -->
             <div class="item-card">
                 <h3>4. Phân bố tần suất giá: 2 quý đầu năm vs 2 quý cuối năm</h3>
                 <div class="item-body">
@@ -518,12 +515,12 @@ HTML_CONTENT = f"""<!DOCTYPE html>
                         <img src="{auto_charts['chart4']}" alt="Histogram 2 nửa năm">
                     </div>
                     <div class="desc-text">
-                        <p><strong>Nhận xét:</strong> Hai giai đoạn thể hiện sự tương phản rõ rệt[cite: 27]. Hai quý đầu năm phân bố trải rộng ở vùng giá cao (tập trung từ 8,000 đến 16,000 VND)[cite: 27]. Ngược lại, hai quý cuối năm mật độ tần suất dồn cục bộ về bên trái, phần lớn các mức giá chỉ dao động dưới ngưỡng 5,000 VND[cite: 27].</p>
+                        <p><strong>Nhận xét:</strong> Hai giai đoạn thể hiện sự tương phản rõ rệt. Hai quý đầu năm phân bố trải rộng ở vùng giá cao (tập trung từ 8,000 đến 16,000 VND). Ngược lại, hai quý cuối năm mật độ tần suất dồn cục bộ về bên trái, phần lớn các mức giá chỉ dao động dưới ngưỡng 5,000 VND.</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Mục 5 -->
+            <!-- 5. Xu hướng cả năm -->
             <div class="item-card">
                 <h3>5. Xu hướng giá trong năm</h3>
                 <div class="item-body">
@@ -532,8 +529,8 @@ HTML_CONTENT = f"""<!DOCTYPE html>
                     </div>
                     <div class="desc-text">
                         <p><strong>Nhận xét:</strong> 
-                            <br>• Giá bắt đầu tại 10,000 VND, bứt phá mạnh lên đỉnh cao nhất năm (đạt 18,628 VND) vào giai đoạn đầu năm[cite: 27].
-                            <br>• Sau khi lập đỉnh, cổ phiếu bước vào chu kỳ suy thoái kéo dài, liên tục gãy các vùng hỗ trợ và rơi về đáy thấp nhất năm (chỉ còn 1,213 VND) trước khi đi ngang ở các phiên cuối năm[cite: 27].
+                            <br>• Giá bắt đầu tại 10,000 VND, bứt phá mạnh lên đỉnh cao nhất năm (đạt 18,628 VND) vào giai đoạn đầu năm.
+                            <br>• Sau khi lập đỉnh, cổ phiếu bước vào chu kỳ suy thoái kéo dài, liên tục gãy các vùng hỗ trợ và rơi về đáy thấp nhất năm (chỉ còn 1,213 VND) trước khi đi ngang ở các phiên cuối năm.
                         </p>
                     </div>
                 </div>
@@ -541,7 +538,7 @@ HTML_CONTENT = f"""<!DOCTYPE html>
         </div>
     </div>
 
-    <!-- Script đồng bộ chỉ số theo tiến độ phát video (GIỮ NGUYÊN HOÀN TOÀN) -->
+    <!-- Script đồng bộ chỉ số theo tiến độ phát video (GIỮ NGUYÊN) -->
     <script>
         const video = document.getElementById('stockVideo');
         const marketData = {market_data_json};
